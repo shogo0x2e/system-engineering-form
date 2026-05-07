@@ -19,6 +19,7 @@ import {
 import {
   ArrowLeft,
   Bell,
+  BookOpen,
   Bot,
   Brain,
   Calendar,
@@ -35,6 +36,8 @@ import {
   Search,
   Share2,
   Sparkles,
+  Sprout,
+  Target,
   Tv,
   UserRound,
   type LucideIcon,
@@ -88,12 +91,11 @@ const iconMap: Record<string, LucideIcon> = {
   difficult_to_understand: Brain,
   too_many_choices: ListChecks,
   endless_information: RefreshCw,
-  never: CircleSlash,
-  tried_few_times: Sparkles,
-  occasionally: Search,
-  weekly: Calendar,
-  daily: Check,
-  heavy: Bot,
+  never_used: BookOpen,
+  rarely_used: Sprout,
+  sometimes_uncertain: CircleHelp,
+  basic_familiar: Sparkles,
+  purposeful_use: Target,
   male: UserRound,
   female: UserRound,
   under_18: Calendar,
@@ -410,7 +412,7 @@ export default function SurveyPage() {
               </button>
               <p className="mb-1 text-sm text-muted-foreground">質問 3 / 3（任意）</p>
               <h1 className="text-balance text-xl font-bold md:text-2xl">
-                差し支えなければ、AIチャット・AI検索をどの程度利用しているか教えてください。
+                差し支えなければ、AIチャット・AI検索への慣れに最も近いものを1つ選んでください。
               </h1>
             </header>
             <main className="flex flex-1 flex-wrap content-start gap-3">

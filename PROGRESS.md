@@ -56,7 +56,7 @@ Drizzle や ORM を入れる案もあるが、MVP の DB は `survey_responses` 
 `next build` と `opennextjs-cloudflare build` で route handler と Cloudflare bundle のビルドを確認する。local D1 に対して `wrangler dev` 経由で API POST/PATCH/CSV export を手動確認する。
 
 ### Notes
-Q3 の option id は当初の handoff に合わせ、`never` / `tried_few_times` / `occasionally` / `weekly` / `daily` / `heavy` / `no_answer` とする。変更が必要な場合は `lib/survey/options.ts` と `lib/survey/schema.ts` を更新する。
+Q3 の option id は当初の handoff に合わせ、`never` / `tried_few_times` / `occasionally` / `weekly` / `daily` / `heavy` / `no_answer` として実装したが、後続の設問見直しで AI 利用頻度ではなく familiarity を聞く方針へ変更した。現在の正は後続 ADR の Q3 familiarity 設問である。
 
 ## [2026-05-07] フロントエンド回答フローの API 保存対応
 
@@ -97,3 +97,23 @@ PR3 内では見た目を大きく変えず、Q1/Q2/Q3/任意属性の回答値�
 
 ### Notes
 生成アイコンシートは `/Users/shogo/.codex/generated_images/019de27c-f43c-7271-afe0-997b5e7ccf18/ig_0281c60b81d01e0d0169fc1a1a37d4819187beb41eae5b04c7.png` に保存されている。
+
+## [2026-05-07] Q3 を AI 利用頻度から familiarity 設問へ修正
+
+### Context
+PR3 の画面確認中、Q3 が「AIチャット・AI検索をどの程度利用しているか」という利用頻度寄りの設問になっていた。設計上の意図は、主分析の後に AI 文脈を補助的に聞きつつ、頻度ではなく AIチャット・AI検索への慣れや使い分け可能性を取得することだった。
+
+### Decision
+Q3 の質問文を「AIチャット・AI検索への慣れに最も近いもの」に変更し、選択肢 ID も `never_used` / `rarely_used` / `sometimes_uncertain` / `basic_familiar` / `purposeful_use` / `no_answer` に変更する。DB は `q3_answer TEXT` のため migration は不要とする。
+
+### Alternatives
+旧 ID のまま label だけ変える案もあるが、CSV 分析時に `weekly` や `daily` が familiarity を意味する状態になると誤読しやすいため採用しない。利用頻度を別設問として残す案は、今回の MVP では設問数を増やすため採用しない。
+
+### Consequences
+PR3 前に local D1 に入った試験データには旧 Q3 ID が含まれる可能性がある。配布前のローカル試験データなので本番分析対象には含めない。以後の API validation は新 Q3 ID のみを受け付ける。
+
+### Checks
+`tsc --noEmit`、`next build`、`opennextjs-cloudflare build` で Q3 ID 変更後も型・ビルドが通ることを確認する。local 画面は refresh 後に Q3 の質問文と選択肢が familiarity 表現になっていることを確認する。
+
+### Notes
+Q3 は任意回答のままであり、未選択で本体回答を完了した場合は `q3_answer = NULL`、明示的に「回答しない」を選んだ場合は `q3_answer = 'no_answer'` として保存する。
