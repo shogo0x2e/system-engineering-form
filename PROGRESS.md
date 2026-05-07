@@ -117,3 +117,23 @@ PR3 前に local D1 に入った試験データには旧 Q3 ID が含まれる�
 
 ### Notes
 Q3 は任意回答のままであり、未選択で本体回答を完了した場合は `q3_answer = NULL`、明示的に「回答しない」を選んだ場合は `q3_answer = 'no_answer'` として保存する。
+
+## [2026-05-07] 任意属性の年齢を年齢層選択から数字入力へ変更
+
+### Context
+任意属性画面の年齢が `18歳未満` / `18〜19歳` / `20〜24歳` などの選択肢になっていたが、画面確認時に「選択肢ではなく数字を直接入れる方がよい」というレビューがあった。任意属性は主分析ではなくサンプル説明用であり、回答者数も小さいため年齢層に丸める必要性は高くない。
+
+### Decision
+フロントエンドでは年齢を `type="number"` の任意入力に変更する。API/DB の既存互換のため request key は `ageGroup`、DB column は `age_group` のまま残すが、保存値は `"20"` のような数字文字列とする。zod validation は 0〜120 の整数文字列のみ許可する。
+
+### Alternatives
+DB column を `age` に rename する案もあるが、D1 migration と CSV header 変更が必要になり PR3 の範囲を広げるため採用しない。年齢層選択を維持する案は、ユーザー入力の自然さとレビュー指摘に合わないため採用しない。
+
+### Consequences
+CSV 上の `age_group` には年齢層 ID ではなく数字文字列が入る。後続でスキーマを整理する場合は `age_group` を `age` に rename する migration を検討できる。空欄の場合は `NULL` として保存し、回答しない専用 option は持たない。
+
+### Checks
+`tsc --noEmit`、`next build`、`opennextjs-cloudflare build` で型・ビルドが通ることを確認する。local API に対して `ageGroup: "20"` が保存できることを確認する。
+
+### Notes
+年齢は任意属性であり、未入力でも本体回答は有効なまま完了できる。

@@ -69,28 +69,9 @@ export const GENDER_OPTIONS = [
   { id: "no_answer", label: "回答しない" },
 ] as const
 
-export const AGE_GROUP_OPTION_IDS = [
-  "under_18",
-  "18_19",
-  "20_24",
-  "25_29",
-  "30_plus",
-  "no_answer",
-] as const
-
-export const AGE_GROUP_OPTIONS = [
-  { id: "under_18", label: "18歳未満" },
-  { id: "18_19", label: "18〜19歳" },
-  { id: "20_24", label: "20〜24歳" },
-  { id: "25_29", label: "25〜29歳" },
-  { id: "30_plus", label: "30歳以上" },
-  { id: "no_answer", label: "回答しない" },
-] as const
-
 export type Q1Answer = (typeof Q1_OPTION_IDS)[number]
 export type Q2Answer = (typeof Q2_OPTION_IDS)[number]
 export type Q3Answer = (typeof Q3_OPTION_IDS)[number]
 export type GenderAnswer = (typeof GENDER_OPTION_IDS)[number]
-export type AgeGroupAnswer = (typeof AGE_GROUP_OPTION_IDS)[number]
 
 export const TERMINAL_Q1_ANSWERS = ["none", "no_answer"] as const satisfies readonly Q1Answer[]

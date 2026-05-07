@@ -4,13 +4,11 @@ import { useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
 import { Button } from "@/components/ui/button"
 import {
-  AGE_GROUP_OPTIONS,
   GENDER_OPTIONS,
   Q1_OPTIONS,
   Q2_OPTIONS,
   Q3_OPTIONS,
   TERMINAL_Q1_ANSWERS,
-  type AgeGroupAnswer,
   type GenderAnswer,
   type Q1Answer,
   type Q2Answer,
@@ -59,7 +57,7 @@ type SurveyFormValues = {
   q2OtherText: string | null
   q3Answer: Q3Answer | null
   gender: GenderAnswer | null
-  ageGroup: AgeGroupAnswer | null
+  ageGroup: string | null
 }
 
 const defaultFormValues: SurveyFormValues = {
@@ -98,11 +96,6 @@ const iconMap: Record<string, LucideIcon> = {
   purposeful_use: Target,
   male: UserRound,
   female: UserRound,
-  under_18: Calendar,
-  "18_19": Calendar,
-  "20_24": Calendar,
-  "25_29": Calendar,
-  "30_plus": Calendar,
 }
 
 function shuffle<T>(items: readonly T[]) {
@@ -284,13 +277,14 @@ export default function SurveyPage() {
 
   const submitDemographics = async () => {
     const values = getValues()
+    const ageGroup = values.ageGroup?.trim() || null
 
     if (!responseId) {
       setStep("complete")
       return
     }
 
-    if (!values.gender && !values.ageGroup) {
+    if (!values.gender && !ageGroup) {
       setStep("complete")
       return
     }
@@ -302,7 +296,7 @@ export default function SurveyPage() {
       const res = await fetch(`/api/survey/responses/${responseId}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ gender: values.gender, ageGroup: values.ageGroup }),
+        body: JSON.stringify({ gender: values.gender, ageGroup }),
       })
 
       if (!res.ok) {
@@ -465,16 +459,27 @@ export default function SurveyPage() {
 
             <section className="space-y-4">
               <h2 className="text-sm font-semibold text-muted-foreground">年齢</h2>
-              <div className="flex flex-wrap gap-3">
-                {AGE_GROUP_OPTIONS.map((option) => (
-                  <OptionButton
-                    key={option.id}
-                    id={option.id}
-                    label={option.label}
-                    selected={ageGroup === option.id}
-                    onClick={() => setValue("ageGroup", option.id)}
+              <div className="max-w-xs">
+                <label className="flex min-h-[64px] items-center gap-3 rounded-lg border-2 border-border bg-card px-4 text-card-foreground transition-all duration-200 focus-within:border-primary focus-within:bg-primary/10 focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
+                  <Calendar className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    max={120}
+                    value={ageGroup ?? ""}
+                    onChange={(event) => {
+                      const digits = event.target.value.replace(/\D/g, "").slice(0, 3)
+                      const value = digits ? String(Math.min(Number(digits), 120)) : null
+                      setValue("ageGroup", value)
+                    }}
+                    placeholder="例: 20"
+                    aria-label="年齢"
+                    className="w-full bg-transparent text-base font-medium outline-none placeholder:text-muted-foreground"
                   />
-                ))}
+                  <span className="shrink-0 text-sm font-medium text-muted-foreground">歳</span>
+                </label>
+                <p className="mt-2 text-xs text-muted-foreground">任意です。回答しない場合は空欄のままで進めます。</p>
               </div>
             </section>
 
