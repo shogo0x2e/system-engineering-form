@@ -1,6 +1,5 @@
 import { z } from "zod"
 import {
-  AGE_GROUP_OPTION_IDS,
   GENDER_OPTION_IDS,
   Q1_OPTION_IDS,
   Q2_OPTION_IDS,
@@ -12,6 +11,12 @@ const terminalQ1Ids = new Set<string>(TERMINAL_Q1_ANSWERS)
 
 const optionalKey = z.string().trim().min(1).max(256).optional().nullable()
 const otherText = z.string().trim().min(1).max(500)
+const optionalAge = z
+  .string()
+  .trim()
+  .regex(/^(?:[0-9]|[1-9][0-9]|1[01][0-9]|120)$/)
+  .optional()
+  .nullable()
 
 function hasText(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0
@@ -25,9 +30,9 @@ export const createSurveyResponseSchema = z
     q1OtherText: z.string().trim().max(500).optional().nullable(),
     q2Answer: z.enum(Q2_OPTION_IDS).optional().nullable(),
     q2OtherText: z.string().trim().max(500).optional().nullable(),
-    q3Answer: z.enum(Q3_OPTION_IDS).optional().nullable(),
+    q3Answer: z.enum(Q3_OPTION_IDS),
     gender: z.enum(GENDER_OPTION_IDS).optional().nullable(),
-    ageGroup: z.enum(AGE_GROUP_OPTION_IDS).optional().nullable(),
+    ageGroup: optionalAge,
     q1DisplayOrder: z.array(z.enum(Q1_OPTION_IDS)).optional().nullable(),
     q2DisplayOrder: z.array(z.enum(Q2_OPTION_IDS)).optional().nullable(),
   })
@@ -90,7 +95,7 @@ export const createSurveyResponseSchema = z
 export const updateSurveyDemographicsSchema = z
   .object({
     gender: z.enum(GENDER_OPTION_IDS).optional().nullable(),
-    ageGroup: z.enum(AGE_GROUP_OPTION_IDS).optional().nullable(),
+    ageGroup: optionalAge,
   })
   .refine((value) => value.gender !== undefined || value.ageGroup !== undefined, {
     message: "gender or ageGroup is required",

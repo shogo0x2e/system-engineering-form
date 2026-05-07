@@ -56,4 +56,144 @@ Drizzle や ORM を入れる案もあるが、MVP の DB は `survey_responses` 
 `next build` と `opennextjs-cloudflare build` で route handler と Cloudflare bundle のビルドを確認する。local D1 に対して `wrangler dev` 経由で API POST/PATCH/CSV export を手動確認する。
 
 ### Notes
-Q3 の option id は当初の handoff に合わせ、`never` / `tried_few_times` / `occasionally` / `weekly` / `daily` / `heavy` / `no_answer` とする。変更が必要な場合は `lib/survey/options.ts` と `lib/survey/schema.ts` を更新する。
+Q3 の option id は当初の handoff に合わせ、`never` / `tried_few_times` / `occasionally` / `weekly` / `daily` / `heavy` / `no_answer` として実装したが、後続の設問見直しで AI 利用頻度ではなく familiarity を聞く方針へ変更した。現在の正は後続 ADR の Q3 familiarity 設問である。
+
+## [2026-05-07] フロントエンド回答フローの API 保存対応
+
+### Context
+サーバー側 API と CSV export が入ったため、既存の `localStorage` 保存・Q1/Q2のみの画面を新しいアンケート仕様へ移行する。今回の PR では local D1 に回答を保存できる UI フローを作る。
+
+### Decision
+画面は開始 → Q1 → Q2 → Q3 → 任意属性 → 完了の逐次フローにする。Q1 が `none` / `no_answer` の場合は Q2 をスキップして Q3 へ進める。Q1/Q2 の選択肢順は回答開始時にランダム化し、API payload に display order として送る。当初 Q3 と属性は任意回答としていたが、後続レビューで Q3 は `no_answer` を含む必須回答、属性のみ任意回答へ変更する。
+
+### Alternatives
+既存の `localStorage` 配列を残して API と二重保存する案もあるが、保存経路が分かれて検証が難しくなるため採用しない。失敗マーク UI はネット配布時の説明負荷が高く、MVP の DB スキーマにも含めていないため削除する。
+
+### Consequences
+回答者向け UI から local D1 へ保存できるようになる一方、ブラウザ内 CSV ダウンロードとローカル統計表示は削除される。CSV は後続の管理導線または API から取得する。FingerprintJS と `user_key` / `fingerprint_key` 生成は未実装のまま残る。
+
+### Checks
+`tsc --noEmit`、`next build`、`opennextjs-cloudflare build` を確認する。Wrangler dev 上で `/` が 200 を返すこと、terminal Q1 payload が `POST /api/survey/responses` で保存できることを確認する。
+
+### Notes
+Q3 は当初 option を選ばずに完了できる設計だったが、後続レビューで必須回答へ変更した。現在は `no_answer` を明示的に選んだ場合のみ `q3_answer = 'no_answer'` として保存する。
+
+## [2026-05-07] PR3 レビュー対応とアイコン生成方針
+
+### Context
+PR3 の画面実装に対して、フォーム値の `useState` が多く、`react-hook-form` を使う方がよいのではないかというレビュー観点が出た。また、Q1/Q2/Q3 の選択肢アイコンは参考画像のトリミングではなく新規生成する方針になった。
+
+### Decision
+PR3 内では見た目を大きく変えず、Q1/Q2/Q3/任意属性の回答値だけを `react-hook-form` に移す。画面 step、送信状態、エラー、free text modal の開閉はフォーム値ではなく UI 状態として `useState` に残す。アイコンはまず生成シートでトーンを確認し、実投入は後続 PR で個別ファイル化して行う。
+
+### Alternatives
+すべての状態を `react-hook-form` に寄せる案もあるが、step 遷移や modal 開閉までフォームに入れると責務が混ざるため採用しない。参考画像からアイコンをトリミングする案は、解像度・背景混入・ライセンス不明・トーン統一の面でリスクがあるため採用しない。
+
+### Consequences
+回答値の更新・取得・reset が一箇所にまとまり、後続の visual pass で入力部品を差し替えやすくなる。生成アイコンは現時点では repo に取り込まず、PR4/PR5 でレイアウト調整と個別アイコン投入を分ける余地を残す。
+
+### Checks
+`tsc --noEmit` と `next build` で `react-hook-form` 化後も型・ビルドが通ることを確認する。生成したアイコンシートは目視で、必要な選択肢の絵柄が揃っているか確認する。
+
+### Notes
+生成アイコンシートは `/Users/shogo/.codex/generated_images/019de27c-f43c-7271-afe0-997b5e7ccf18/ig_0281c60b81d01e0d0169fc1a1a37d4819187beb41eae5b04c7.png` に保存されている。
+
+## [2026-05-07] Q3 を AI 利用頻度から familiarity 設問へ修正
+
+### Context
+PR3 の画面確認中、Q3 が「AIチャット・AI検索をどの程度利用しているか」という利用頻度寄りの設問になっていた。設計上の意図は、主分析の後に AI 文脈を補助的に聞きつつ、頻度ではなく AIチャット・AI検索への慣れや使い分け可能性を取得することだった。
+
+### Decision
+Q3 の質問文を「AIチャット・AI検索への慣れに最も近いもの」に変更し、選択肢 ID も `never_used` / `rarely_used` / `sometimes_uncertain` / `basic_familiar` / `purposeful_use` / `no_answer` に変更する。DB は `q3_answer TEXT` のため migration は不要とする。
+
+### Alternatives
+旧 ID のまま label だけ変える案もあるが、CSV 分析時に `weekly` や `daily` が familiarity を意味する状態になると誤読しやすいため採用しない。利用頻度を別設問として残す案は、今回の MVP では設問数を増やすため採用しない。
+
+### Consequences
+PR3 前に local D1 に入った試験データには旧 Q3 ID が含まれる可能性がある。配布前のローカル試験データなので本番分析対象には含めない。以後の API validation は新 Q3 ID のみを受け付ける。
+
+### Checks
+`tsc --noEmit`、`next build`、`opennextjs-cloudflare build` で Q3 ID 変更後も型・ビルドが通ることを確認する。local 画面は refresh 後に Q3 の質問文と選択肢が familiarity 表現になっていることを確認する。
+
+### Notes
+Q3 はこの時点では任意回答のままだったが、後続レビューで必須回答へ変更した。現在は未選択で本体回答を完了できず、明示的に「回答しない」を選んだ場合は `q3_answer = 'no_answer'` として保存する。
+
+## [2026-05-07] 任意属性の年齢を年齢層選択から数字入力へ変更
+
+### Context
+任意属性画面の年齢が `18歳未満` / `18〜19歳` / `20〜24歳` などの選択肢になっていたが、画面確認時に「選択肢ではなく数字を直接入れる方がよい」というレビューがあった。任意属性は主分析ではなくサンプル説明用であり、回答者数も小さいため年齢層に丸める必要性は高くない。
+
+### Decision
+フロントエンドでは年齢を `type="number"` の任意入力に変更する。API/DB の既存互換のため request key は `ageGroup`、DB column は `age_group` のまま残すが、保存値は `"20"` のような数字文字列とする。zod validation は 0〜120 の整数文字列のみ許可する。
+
+### Alternatives
+DB column を `age` に rename する案もあるが、D1 migration と CSV header 変更が必要になり PR3 の範囲を広げるため採用しない。年齢層選択を維持する案は、ユーザー入力の自然さとレビュー指摘に合わないため採用しない。
+
+### Consequences
+CSV 上の `age_group` には年齢層 ID ではなく数字文字列が入る。後続でスキーマを整理する場合は `age_group` を `age` に rename する migration を検討できる。空欄の場合は `NULL` として保存し、回答しない専用 option は持たない。
+
+### Checks
+`tsc --noEmit`、`next build`、`opennextjs-cloudflare build` で型・ビルドが通ることを確認する。local API に対して `ageGroup: "20"` が保存できることを確認する。
+
+### Notes
+年齢は任意属性であり、未入力でも本体回答は有効なまま完了できる。
+
+## [2026-05-07] Q3 必須化と任意属性最終画面の整理
+
+### Context
+Q3 の画面に「任意」と表示されていたが、選択肢に `no_answer` があるため、Q1〜Q3 までは本体設問として必須にしてよいというレビューがあった。また、任意属性画面の「回答ありがとうございました。」表示が、完了済みなのか最後の入力画面なのか分かりづらかった。
+
+### Decision
+Q3 は `no_answer` を含む必須回答に変更する。UI では `質問 3 / 3` と表示し、未選択では次へ進めない。API validation でも `q3Answer` を必須にする。この時点では任意属性を独立した最終ステップとして整理したが、後続 ADR で完了画面内カードへ統合した。
+
+### Alternatives
+Q3 を任意のまま維持する案もあるが、`回答しない` が明示選択肢としてあるため、未回答と明示拒否を分けるよりも本体設問として揃える方が画面上も分析上も分かりやすい。任意属性画面で「回答せず終了」ボタンを残す案は、最後の画面としての位置づけが曖昧になるため採用しない。
+
+### Consequences
+今後の回答では `q3_answer` が必ず入る。既存のローカル試験データには `NULL` の Q3 が残る可能性があるが、本番配布前のデータなので分析対象には含めない。任意属性は空欄でも送信でき、性別または年齢が入った場合のみ PATCH する。
+
+### Checks
+`tsc --noEmit`、`next build`、`opennextjs-cloudflare build` で型・ビルドが通ることを確認する。local API に対して `q3Answer` なしの POST が失敗し、`q3Answer: "no_answer"` または familiarity option がある POST は成功することを確認する。
+
+### Notes
+任意属性の `gender = no_answer` は明示回答なのでチェック済み扱いにする。年齢は数字入力のため、空欄の場合のみ未回答扱いにする。
+
+## [2026-05-07] 完了画面への任意属性カード統合
+
+### Context
+独立した任意属性画面では、完了画面なのか追加入力画面なのかが分かりづらかった。レビューでは、`ご協力ありがとうございました！` の直下に性別・年齢フォームを置き、任意項目を1つのカードにまとめ、その内部に送信ボタンを持たせる案が出た。
+
+### Decision
+本体回答の POST 成功後は直接 `complete` 画面へ遷移する。完了画面には本体回答が送信済みであることを表示し、その下に小さめの `任意項目` カードを置く。性別・年齢はカード内にまとめ、カード内の `任意項目を送信する` ボタンで PATCH する。入力しない場合は何も押さずに閉じられるようにし、`入力せず完了` のような別ボタンは置かない。
+
+### Alternatives
+任意属性を独立ステップのまま残す案もあるが、本体回答完了後の追加協力という意味が画面構造から伝わりにくいため採用しない。カード外に送信ボタンを置く案は、どの入力に対する送信か分かりにくいため採用しない。
+
+### Consequences
+step は `start` / `q1` / `q2` / `q3` / `complete` に単純化される。任意属性は本体回答とは独立した追加送信として扱われ、未入力なら送信ボタンは無効になる。任意属性送信後はカード内に送信済みメッセージを表示する。
+
+### Checks
+`tsc --noEmit`、`next build`、`opennextjs-cloudflare build` で型・ビルドが通ることを確認する。local API に対して本体回答 POST 後、完了画面の任意属性カードから `gender` / `ageGroup` を PATCH できることを確認する。
+
+### Notes
+当初 `もう一度回答する` は完了画面下部に ghost button として残したが、ネット配布時には意図が分かりにくいため後続 ADR で削除した。
+
+## [2026-05-07] 任意項目送信後表示と再回答導線の整理
+
+### Context
+完了画面内の任意項目カードでは、送信後も性別・年齢フォームが残っており、`任意項目を送信しました` というテキストだけでは状態変化が弱かった。また、`もう一度回答する` はネット配布では重複回答を促すように見え、意図が分かりにくい。
+
+### Decision
+任意項目を送信したら、カード内部をチェックマーク付きの送信済み表示へ切り替え、性別・年齢の入力 UI と送信ボタンは非表示にする。完了画面の `もう一度回答する` ボタンは削除する。
+
+### Alternatives
+送信済みメッセージだけを追加してフォームを disabled 表示で残す案もあるが、画面が重くなり、送信後にまだ操作できそうに見えるため採用しない。再回答ボタンを残す案は、重複回答抑制方針と相性が悪いため採用しない。
+
+### Consequences
+送信後の状態が明確になり、回答者はページを閉じればよいことが分かりやすくなる。一方、同じブラウザで再回答する導線は UI から消えるため、テスト時はページ reload や local state reset で対応する。
+
+### Checks
+`tsc --noEmit`、`next build`、`opennextjs-cloudflare build` で型・ビルドが通ることを確認する。local 画面で任意項目送信後にフォームが消え、チェック付き完了表示に変わることを確認する。
+
+### Notes
+本体回答の再回答制御は、後続の `user_key` / `fingerprint_key` 実装時に改めて扱う。

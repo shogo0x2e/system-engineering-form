@@ -1,5 +1,4 @@
 import type {
-  AgeGroupAnswer,
   GenderAnswer,
   Q1Answer,
   Q2Answer,
@@ -16,7 +15,7 @@ export type SurveyResponse = {
   q2OtherText: string | null
   q3Answer: Q3Answer | null
   gender: GenderAnswer | null
-  ageGroup: AgeGroupAnswer | null
+  ageGroup: string | null
   q1DisplayOrderJson: string | null
   q2DisplayOrderJson: string | null
   completedAt: string | null
@@ -34,7 +33,7 @@ export type SurveyResponseRow = {
   q2_other_text: string | null
   q3_answer: Q3Answer | null
   gender: GenderAnswer | null
-  age_group: AgeGroupAnswer | null
+  age_group: string | null
   q1_display_order_json: string | null
   q2_display_order_json: string | null
   completed_at: string | null
@@ -47,6 +46,5 @@ export type CreateSurveyResponseRecord = Omit<SurveyResponseRow, "created_at" | 
 export type UpdateSurveyDemographicsRecord = {
   id: string
   gender: GenderAnswer | null
-  age_group: AgeGroupAnswer | null
+  age_group: string | null
 }
-

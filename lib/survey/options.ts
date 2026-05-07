@@ -43,22 +43,20 @@ export const Q2_OPTIONS = [
 ] as const
 
 export const Q3_OPTION_IDS = [
-  "never",
-  "tried_few_times",
-  "occasionally",
-  "weekly",
-  "daily",
-  "heavy",
+  "never_used",
+  "rarely_used",
+  "sometimes_uncertain",
+  "basic_familiar",
+  "purposeful_use",
   "no_answer",
 ] as const
 
 export const Q3_OPTIONS = [
-  { id: "never", label: "ほぼ使ったことがない" },
-  { id: "tried_few_times", label: "数回使ったことがある程度" },
-  { id: "occasionally", label: "必要なときにときどき使う" },
-  { id: "weekly", label: "週に数回程度使う" },
-  { id: "daily", label: "ほぼ毎日使う" },
-  { id: "heavy", label: "学業・研究・仕事などでかなり頻繁に使う" },
+  { id: "never_used", label: "使ったことがない" },
+  { id: "rarely_used", label: "使ったことはあるが、ほとんど使わない" },
+  { id: "sometimes_uncertain", label: "必要なときに使うが、使い方にはまだ迷う" },
+  { id: "basic_familiar", label: "よく使っており、基本的な使い方には慣れている" },
+  { id: "purposeful_use", label: "よく使っており、目的に応じて使い分けられる" },
   { id: "no_answer", label: "回答しない" },
 ] as const
 
@@ -71,28 +69,9 @@ export const GENDER_OPTIONS = [
   { id: "no_answer", label: "回答しない" },
 ] as const
 
-export const AGE_GROUP_OPTION_IDS = [
-  "under_18",
-  "18_19",
-  "20_24",
-  "25_29",
-  "30_plus",
-  "no_answer",
-] as const
-
-export const AGE_GROUP_OPTIONS = [
-  { id: "under_18", label: "18歳未満" },
-  { id: "18_19", label: "18〜19歳" },
-  { id: "20_24", label: "20〜24歳" },
-  { id: "25_29", label: "25〜29歳" },
-  { id: "30_plus", label: "30歳以上" },
-  { id: "no_answer", label: "回答しない" },
-] as const
-
 export type Q1Answer = (typeof Q1_OPTION_IDS)[number]
 export type Q2Answer = (typeof Q2_OPTION_IDS)[number]
 export type Q3Answer = (typeof Q3_OPTION_IDS)[number]
 export type GenderAnswer = (typeof GENDER_OPTION_IDS)[number]
-export type AgeGroupAnswer = (typeof AGE_GROUP_OPTION_IDS)[number]
 
 export const TERMINAL_Q1_ANSWERS = ["none", "no_answer"] as const satisfies readonly Q1Answer[]
