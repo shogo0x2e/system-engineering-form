@@ -41,7 +41,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 
-type Step = "start" | "q1" | "q2" | "q3" | "demographics" | "complete"
+type Step = "start" | "q1" | "q2" | "q3" | "complete"
 
 type SurveyResponsePayload = {
   response?: {
@@ -156,28 +156,30 @@ function OptionButton({
   )
 }
 
-function OptionalStatus({
+function DemographicChoiceButton({
+  id,
   label,
-  completed,
+  selected,
+  onClick,
 }: {
+  id: string
   label: string
-  completed: boolean
+  selected?: boolean
+  onClick: () => void
 }) {
+  const Icon = iconMap[id] ?? CircleHelp
+
   return (
-    <div
-      className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium ${
-        completed ? "border-primary/30 bg-primary/10 text-primary" : "border-border text-muted-foreground"
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex min-h-11 items-center gap-2 rounded-md border bg-background px-3 text-left text-sm font-medium transition-colors hover:border-primary hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+        selected ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground"
       }`}
     >
-      <span
-        className={`flex h-5 w-5 items-center justify-center rounded-full border ${
-          completed ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40"
-        }`}
-      >
-        {completed && <Check className="h-3 w-3" aria-hidden="true" />}
-      </span>
+      <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
       {label}
-    </div>
+    </button>
   )
 }
 
@@ -188,6 +190,7 @@ export default function SurveyPage() {
   const [freeText, setFreeText] = useState("")
   const [freeTextTarget, setFreeTextTarget] = useState<"q1" | "q2" | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [demographicsSubmitted, setDemographicsSubmitted] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const { getValues, reset, setValue, watch } = useForm<SurveyFormValues>({
     defaultValues: defaultFormValues,
@@ -198,6 +201,7 @@ export default function SurveyPage() {
   const q3Answer = watch("q3Answer")
   const gender = watch("gender")
   const ageGroup = watch("ageGroup")
+  const hasDemographicsInput = Boolean(gender || ageGroup?.trim())
 
   const { q1Options, q2Options, q1DisplayOrder, q2DisplayOrder } = useMemo(
     () => createDisplayOrders(),
@@ -211,6 +215,7 @@ export default function SurveyPage() {
     setResponseId(null)
     setFreeText("")
     setFreeTextTarget(null)
+    setDemographicsSubmitted(false)
     setErrorMessage(null)
   }
 
@@ -295,7 +300,7 @@ export default function SurveyPage() {
       }
 
       setResponseId(payload.response.id)
-      setStep("demographics")
+      setStep("complete")
     } catch {
       setErrorMessage("回答を保存できませんでした。時間をおいてもう一度お試しください。")
     } finally {
@@ -308,12 +313,10 @@ export default function SurveyPage() {
     const ageGroup = values.ageGroup?.trim() || null
 
     if (!responseId) {
-      setStep("complete")
       return
     }
 
     if (!values.gender && !ageGroup) {
-      setStep("complete")
       return
     }
 
@@ -331,7 +334,7 @@ export default function SurveyPage() {
         throw new Error("optional demographics update failed")
       }
 
-      setStep("complete")
+      setDemographicsSubmitted(true)
     } catch {
       setErrorMessage("任意項目を保存できませんでした。時間をおいてもう一度お試しください。")
     } finally {
@@ -459,77 +462,79 @@ export default function SurveyPage() {
           </>
         )}
 
-        {step === "demographics" && (
-          <main className="flex flex-1 flex-col justify-center gap-8">
-            <section>
-              <p className="mb-2 text-sm font-medium text-muted-foreground">任意項目</p>
-              <h1 className="text-2xl font-bold md:text-3xl">最後に、差し支えなければ属性項目にご協力ください。</h1>
-              <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
-                性別・年齢は結果の解釈の参考にのみ使用します。空欄のまま送信できます。
-              </p>
-              <div className="mt-5 flex flex-wrap gap-2">
-                <OptionalStatus label="性別" completed={Boolean(gender)} />
-                <OptionalStatus label="年齢" completed={Boolean(ageGroup?.trim())} />
-              </div>
-            </section>
-
-            <section className="space-y-4">
-              <h2 className="text-sm font-semibold text-muted-foreground">性別</h2>
-              <div className="flex flex-wrap gap-3">
-                {GENDER_OPTIONS.map((option) => (
-                  <OptionButton
-                    key={option.id}
-                    id={option.id}
-                    label={option.label}
-                    selected={gender === option.id}
-                    onClick={() => setValue("gender", option.id)}
-                  />
-                ))}
-              </div>
-            </section>
-
-            <section className="space-y-4">
-              <h2 className="text-sm font-semibold text-muted-foreground">年齢</h2>
-              <div className="max-w-xs">
-                <label className="flex min-h-[64px] items-center gap-3 rounded-lg border-2 border-border bg-card px-4 text-card-foreground transition-all duration-200 focus-within:border-primary focus-within:bg-primary/10 focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
-                  <Calendar className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    min={0}
-                    max={120}
-                    value={ageGroup ?? ""}
-                    onChange={(event) => {
-                      const digits = event.target.value.replace(/\D/g, "").slice(0, 3)
-                      const value = digits ? String(Math.min(Number(digits), 120)) : null
-                      setValue("ageGroup", value)
-                    }}
-                    placeholder="例: 20"
-                    aria-label="年齢"
-                    className="w-full bg-transparent text-base font-medium outline-none placeholder:text-muted-foreground"
-                  />
-                  <span className="shrink-0 text-sm font-medium text-muted-foreground">歳</span>
-                </label>
-                <p className="mt-2 text-xs text-muted-foreground">任意です。回答しない場合は空欄のままで進めます。</p>
-              </div>
-            </section>
-
-            <footer className="flex flex-col items-stretch gap-3 sm:flex-row sm:justify-end">
-              {errorMessage && <p className="text-sm text-destructive sm:mr-auto">{errorMessage}</p>}
-              <Button onClick={submitDemographics} disabled={isSubmitting}>
-                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                送信する
-              </Button>
-            </footer>
-          </main>
-        )}
-
         {step === "complete" && (
-          <main className="flex flex-1 flex-col items-center justify-center text-center">
+          <main className="flex flex-1 flex-col items-center justify-center py-10 text-center">
             <Check className="mb-4 h-10 w-10 text-primary" aria-hidden="true" />
             <h1 className="text-2xl font-bold md:text-3xl">ご協力ありがとうございました！</h1>
-            <p className="mt-3 text-sm text-muted-foreground">送信が完了しました。</p>
-            <Button onClick={resetAttempt} className="mt-8">
+            <p className="mt-3 text-sm text-muted-foreground">本体の回答は送信済みです。</p>
+
+            <section className="mt-8 w-full max-w-2xl rounded-lg border border-border bg-muted/40 p-4 text-left shadow-sm md:p-5">
+              <div className="mb-5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">任意項目</p>
+                <h2 className="mt-1 text-base font-semibold text-foreground">結果の解釈の参考にするため、任意項目にもご協力ください。</h2>
+                <p className="mt-2 text-xs leading-6 text-muted-foreground">入力しない場合は、このままページを閉じてください。</p>
+              </div>
+
+              {demographicsSubmitted && (
+                <p className="mb-4 rounded-md border border-primary/20 bg-primary/10 px-3 py-2 text-sm font-medium text-primary">
+                  任意項目を送信しました。
+                </p>
+              )}
+
+              <div className="space-y-5">
+                <section className="space-y-2">
+                  <h3 className="text-sm font-semibold text-muted-foreground">性別</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {GENDER_OPTIONS.map((option) => (
+                      <DemographicChoiceButton
+                        key={option.id}
+                        id={option.id}
+                        label={option.id === "other" ? "その他" : option.label}
+                        selected={gender === option.id}
+                        onClick={() => setValue("gender", option.id)}
+                      />
+                    ))}
+                  </div>
+                </section>
+
+                <section className="space-y-2">
+                  <h3 className="text-sm font-semibold text-muted-foreground">年齢</h3>
+                  <label className="flex min-h-11 items-center gap-2 rounded-md border border-border bg-background px-3 text-card-foreground transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
+                    <Calendar className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      max={120}
+                      value={ageGroup ?? ""}
+                      onChange={(event) => {
+                        const digits = event.target.value.replace(/\D/g, "").slice(0, 3)
+                        const value = digits ? String(Math.min(Number(digits), 120)) : null
+                        setValue("ageGroup", value)
+                      }}
+                      placeholder="例: 20"
+                      aria-label="年齢"
+                      className="w-full bg-transparent text-sm font-medium outline-none placeholder:text-muted-foreground"
+                    />
+                    <span className="shrink-0 text-xs font-medium text-muted-foreground">歳</span>
+                  </label>
+                </section>
+              </div>
+
+              <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
+                <Button
+                  onClick={submitDemographics}
+                  disabled={isSubmitting || demographicsSubmitted || !hasDemographicsInput}
+                  className="sm:ml-auto"
+                >
+                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  任意項目を送信する
+                </Button>
+              </div>
+            </section>
+
+            <Button onClick={resetAttempt} variant="ghost" className="mt-6">
               もう一度回答する
             </Button>
           </main>
