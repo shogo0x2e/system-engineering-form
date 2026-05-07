@@ -15,6 +15,7 @@ node_modules
 .next/
 .open-next/
 .wrangler/
+tsconfig.tsbuildinfo
 .dev.vars
 .DS_Store
 .vercel

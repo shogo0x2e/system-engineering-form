@@ -37,3 +37,23 @@ PR1 では Cloudflare/OpenNext の最小基盤だけを追加する。`wrangler.
 
 ### Notes
 D1 の本番 database_id は未作成のため、`wrangler.jsonc` では placeholder を置き、local 開発用に `preview_database_id` を設定する。本番 D1 作成後に `database_id` を差し替える。
+
+## [2026-05-07] アンケート回答 API と CSV export の追加
+
+### Context
+ローカル D1 基盤が入ったため、次は UI 変更より先にサーバー側の保存境界を作る。今回の PR では既存画面の `localStorage` フローは触らず、後続 PR から呼べる D1 API、zod validation、CSV export を用意する。
+
+### Decision
+HTTP route、service、repository を薄く分ける。route は request/response と status code、service は入力正規化・ID生成・CSV生成、repository は D1 SQL だけを担当する。DB 制約は最小限のままにし、option id や `other` の整合性は `lib/survey/schema.ts` の zod schema で検証する。
+
+### Alternatives
+Drizzle や ORM を入れる案もあるが、MVP の DB は `survey_responses` 1テーブルであり、操作も INSERT/UPDATE/SELECT に限られるため採用しない。API route に SQL を直接書く案もあるが、D1 本番移行やテスト時の差し替えを考え、repository に閉じ込める。
+
+### Consequences
+後続 PR ではフロントエンドから `POST /api/survey/responses` と `PATCH /api/survey/responses/:id` を呼ぶだけで D1 保存へ移れる。CSV export は `EXPORT_TOKEN` が設定されている場合のみ token を要求し、未設定のローカル開発ではそのまま確認できる。
+
+### Checks
+`next build` と `opennextjs-cloudflare build` で route handler と Cloudflare bundle のビルドを確認する。local D1 に対して `wrangler dev` 経由で API POST/PATCH/CSV export を手動確認する。
+
+### Notes
+Q3 の option id は当初の handoff に合わせ、`never` / `tried_few_times` / `occasionally` / `weekly` / `daily` / `heavy` / `no_answer` とする。変更が必要な場合は `lib/survey/options.ts` と `lib/survey/schema.ts` を更新する。
