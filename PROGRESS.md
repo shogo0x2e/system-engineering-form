@@ -57,3 +57,23 @@ Drizzle や ORM を入れる案もあるが、MVP の DB は `survey_responses` 
 
 ### Notes
 Q3 の option id は当初の handoff に合わせ、`never` / `tried_few_times` / `occasionally` / `weekly` / `daily` / `heavy` / `no_answer` とする。変更が必要な場合は `lib/survey/options.ts` と `lib/survey/schema.ts` を更新する。
+
+## [2026-05-07] フロントエンド回答フローの API 保存対応
+
+### Context
+サーバー側 API と CSV export が入ったため、既存の `localStorage` 保存・Q1/Q2のみの画面を新しいアンケート仕様へ移行する。今回の PR では local D1 に回答を保存できる UI フローを作る。
+
+### Decision
+画面は開始 → Q1 → Q2 → Q3 → 任意属性 → 完了の逐次フローにする。Q1 が `none` / `no_answer` の場合は Q2 をスキップして Q3 へ進める。Q1/Q2 の選択肢順は回答開始時にランダム化し、API payload に display order として送る。Q3 と属性は任意回答とし、本体回答は Q3 画面の完了操作で `POST /api/survey/responses` に保存する。
+
+### Alternatives
+既存の `localStorage` 配列を残して API と二重保存する案もあるが、保存経路が分かれて検証が難しくなるため採用しない。失敗マーク UI はネット配布時の説明負荷が高く、MVP の DB スキーマにも含めていないため削除する。
+
+### Consequences
+回答者向け UI から local D1 へ保存できるようになる一方、ブラウザ内 CSV ダウンロードとローカル統計表示は削除される。CSV は後続の管理導線または API から取得する。FingerprintJS と `user_key` / `fingerprint_key` 生成は未実装のまま残る。
+
+### Checks
+`tsc --noEmit`、`next build`、`opennextjs-cloudflare build` を確認する。Wrangler dev 上で `/` が 200 を返すこと、terminal Q1 payload が `POST /api/survey/responses` で保存できることを確認する。
+
+### Notes
+Q3 は option を選ばずに完了でき、その場合 `q3_answer` は `NULL` になる。`no_answer` を明示的に選んだ場合は `q3_answer = 'no_answer'` として保存する。
