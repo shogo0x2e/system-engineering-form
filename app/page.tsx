@@ -578,7 +578,6 @@ export default function SurveyPage() {
           questionNumber={1}
           current="q1"
           title="最近の情報接触のなかで、最も負担・疲労感を感じるものを1つ選んでください。"
-          note="※表示順はランダムです。「その他」「特にない」「答えたくない」は最後に固定しています。"
           footer={
             <QuestionFooter
               onBack={() => setStep("start")}
@@ -665,20 +664,36 @@ export default function SurveyPage() {
             />
           }
         >
-          <Q3Scale>
-            {Q3_OPTIONS.map((option) => (
-              <OptionButton
-                key={option.id}
-                id={option.id}
-                label={option.label}
-                selected={q3Answer === option.id}
-                onClick={() => {
-                  setErrorMessage(null)
-                  setValue("q3Answer", option.id)
-                }}
-              />
-            ))}
-          </Q3Scale>
+          <div>
+            <Q3Scale>
+              {Q3_OPTIONS.filter((option) => option.id !== "no_answer").map((option) => (
+                <OptionButton
+                  key={option.id}
+                  id={option.id}
+                  label={option.label}
+                  selected={q3Answer === option.id}
+                  onClick={() => {
+                    setErrorMessage(null)
+                    setValue("q3Answer", option.id)
+                  }}
+                />
+              ))}
+            </Q3Scale>
+            <div className="ml-[52px] mt-4 border-t border-dashed border-[#d9e2ec] pt-4">
+              {Q3_OPTIONS.filter((option) => option.id === "no_answer").map((option) => (
+                <OptionButton
+                  key={option.id}
+                  id={option.id}
+                  label={option.label}
+                  selected={q3Answer === option.id}
+                  onClick={() => {
+                    setErrorMessage(null)
+                    setValue("q3Answer", option.id)
+                  }}
+                />
+              ))}
+            </div>
+          </div>
         </SurveyFrame>
       )}
 
