@@ -30,7 +30,7 @@ export const createSurveyResponseSchema = z
     q1OtherText: z.string().trim().max(500).optional().nullable(),
     q2Answer: z.enum(Q2_OPTION_IDS).optional().nullable(),
     q2OtherText: z.string().trim().max(500).optional().nullable(),
-    q3Answer: z.enum(Q3_OPTION_IDS).optional().nullable(),
+    q3Answer: z.enum(Q3_OPTION_IDS),
     gender: z.enum(GENDER_OPTION_IDS).optional().nullable(),
     ageGroup: optionalAge,
     q1DisplayOrder: z.array(z.enum(Q1_OPTION_IDS)).optional().nullable(),

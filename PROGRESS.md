@@ -64,7 +64,7 @@ Q3 の option id は当初の handoff に合わせ、`never` / `tried_few_times`
 サーバー側 API と CSV export が入ったため、既存の `localStorage` 保存・Q1/Q2のみの画面を新しいアンケート仕様へ移行する。今回の PR では local D1 に回答を保存できる UI フローを作る。
 
 ### Decision
-画面は開始 → Q1 → Q2 → Q3 → 任意属性 → 完了の逐次フローにする。Q1 が `none` / `no_answer` の場合は Q2 をスキップして Q3 へ進める。Q1/Q2 の選択肢順は回答開始時にランダム化し、API payload に display order として送る。Q3 と属性は任意回答とし、本体回答は Q3 画面の完了操作で `POST /api/survey/responses` に保存する。
+画面は開始 → Q1 → Q2 → Q3 → 任意属性 → 完了の逐次フローにする。Q1 が `none` / `no_answer` の場合は Q2 をスキップして Q3 へ進める。Q1/Q2 の選択肢順は回答開始時にランダム化し、API payload に display order として送る。当初 Q3 と属性は任意回答としていたが、後続レビューで Q3 は `no_answer` を含む必須回答、属性のみ任意回答へ変更する。
 
 ### Alternatives
 既存の `localStorage` 配列を残して API と二重保存する案もあるが、保存経路が分かれて検証が難しくなるため採用しない。失敗マーク UI はネット配布時の説明負荷が高く、MVP の DB スキーマにも含めていないため削除する。
@@ -76,7 +76,7 @@ Q3 の option id は当初の handoff に合わせ、`never` / `tried_few_times`
 `tsc --noEmit`、`next build`、`opennextjs-cloudflare build` を確認する。Wrangler dev 上で `/` が 200 を返すこと、terminal Q1 payload が `POST /api/survey/responses` で保存できることを確認する。
 
 ### Notes
-Q3 は option を選ばずに完了でき、その場合 `q3_answer` は `NULL` になる。`no_answer` を明示的に選んだ場合は `q3_answer = 'no_answer'` として保存する。
+Q3 は当初 option を選ばずに完了できる設計だったが、後続レビューで必須回答へ変更した。現在は `no_answer` を明示的に選んだ場合のみ `q3_answer = 'no_answer'` として保存する。
 
 ## [2026-05-07] PR3 レビュー対応とアイコン生成方針
 
@@ -116,7 +116,7 @@ PR3 前に local D1 に入った試験データには旧 Q3 ID が含まれる�
 `tsc --noEmit`、`next build`、`opennextjs-cloudflare build` で Q3 ID 変更後も型・ビルドが通ることを確認する。local 画面は refresh 後に Q3 の質問文と選択肢が familiarity 表現になっていることを確認する。
 
 ### Notes
-Q3 は任意回答のままであり、未選択で本体回答を完了した場合は `q3_answer = NULL`、明示的に「回答しない」を選んだ場合は `q3_answer = 'no_answer'` として保存する。
+Q3 はこの時点では任意回答のままだったが、後続レビューで必須回答へ変更した。現在は未選択で本体回答を完了できず、明示的に「回答しない」を選んだ場合は `q3_answer = 'no_answer'` として保存する。
 
 ## [2026-05-07] 任意属性の年齢を年齢層選択から数字入力へ変更
 
@@ -137,3 +137,23 @@ CSV 上の `age_group` には年齢層 ID ではなく数字文字列が入る�
 
 ### Notes
 年齢は任意属性であり、未入力でも本体回答は有効なまま完了できる。
+
+## [2026-05-07] Q3 必須化と任意属性最終画面の整理
+
+### Context
+Q3 の画面に「任意」と表示されていたが、選択肢に `no_answer` があるため、Q1〜Q3 までは本体設問として必須にしてよいというレビューがあった。また、任意属性画面の「回答ありがとうございました。」表示が、完了済みなのか最後の入力画面なのか分かりづらかった。
+
+### Decision
+Q3 は `no_answer` を含む必須回答に変更する。UI では `質問 3 / 3` と表示し、未選択では次へ進めない。API validation でも `q3Answer` を必須にする。任意属性画面は「最後に属性項目への協力をお願いする画面」として再整理し、性別・年齢の入力状況をチェックマークで表示する。最後の送信後に `ご協力ありがとうございました！` の完了画面を出す。
+
+### Alternatives
+Q3 を任意のまま維持する案もあるが、`回答しない` が明示選択肢としてあるため、未回答と明示拒否を分けるよりも本体設問として揃える方が画面上も分析上も分かりやすい。任意属性画面で「回答せず終了」ボタンを残す案は、最後の画面としての位置づけが曖昧になるため採用しない。
+
+### Consequences
+今後の回答では `q3_answer` が必ず入る。既存のローカル試験データには `NULL` の Q3 が残る可能性があるが、本番配布前のデータなので分析対象には含めない。任意属性は空欄でも送信でき、性別または年齢が入った場合のみ PATCH する。
+
+### Checks
+`tsc --noEmit`、`next build`、`opennextjs-cloudflare build` で型・ビルドが通ることを確認する。local API に対して `q3Answer` なしの POST が失敗し、`q3Answer: "no_answer"` または familiarity option がある POST は成功することを確認する。
+
+### Notes
+任意属性の `gender = no_answer` は明示回答なのでチェック済み扱いにする。年齢は数字入力のため、空欄の場合のみ未回答扱いにする。

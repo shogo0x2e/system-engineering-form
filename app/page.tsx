@@ -156,6 +156,31 @@ function OptionButton({
   )
 }
 
+function OptionalStatus({
+  label,
+  completed,
+}: {
+  label: string
+  completed: boolean
+}) {
+  return (
+    <div
+      className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium ${
+        completed ? "border-primary/30 bg-primary/10 text-primary" : "border-border text-muted-foreground"
+      }`}
+    >
+      <span
+        className={`flex h-5 w-5 items-center justify-center rounded-full border ${
+          completed ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40"
+        }`}
+      >
+        {completed && <Check className="h-3 w-3" aria-hidden="true" />}
+      </span>
+      {label}
+    </div>
+  )
+}
+
 export default function SurveyPage() {
   const [attemptKey, setAttemptKey] = useState(0)
   const [step, setStep] = useState<Step>("start")
@@ -241,7 +266,10 @@ export default function SurveyPage() {
 
   const submitCoreResponse = async () => {
     const values = getValues()
-    if (!values.q1Answer) return
+    if (!values.q1Answer || !values.q3Answer) {
+      setErrorMessage("Q3を選択してください。回答しない場合は「回答しない」を選んでください。")
+      return
+    }
 
     setIsSubmitting(true)
     setErrorMessage(null)
@@ -305,7 +333,7 @@ export default function SurveyPage() {
 
       setStep("complete")
     } catch {
-      setErrorMessage("任意項目を保存できませんでした。回答本体は保存済みです。")
+      setErrorMessage("任意項目を保存できませんでした。時間をおいてもう一度お試しください。")
     } finally {
       setIsSubmitting(false)
     }
@@ -404,10 +432,11 @@ export default function SurveyPage() {
                 <ArrowLeft className="h-4 w-4" />
                 <span className="text-sm">戻る</span>
               </button>
-              <p className="mb-1 text-sm text-muted-foreground">質問 3 / 3（任意）</p>
+              <p className="mb-1 text-sm text-muted-foreground">質問 3 / 3</p>
               <h1 className="text-balance text-xl font-bold md:text-2xl">
-                差し支えなければ、AIチャット・AI検索への慣れに最も近いものを1つ選んでください。
+                AIチャット・AI検索への慣れに最も近いものを1つ選んでください。
               </h1>
+              <p className="mt-3 text-sm text-muted-foreground">回答しない場合は「回答しない」を選んでください。</p>
             </header>
             <main className="flex flex-1 flex-wrap content-start gap-3">
               {Q3_OPTIONS.map((option) => (
@@ -422,12 +451,9 @@ export default function SurveyPage() {
             </main>
             <footer className="mt-8 flex flex-col items-stretch gap-3 sm:flex-row sm:justify-end">
               {errorMessage && <p className="text-sm text-destructive sm:mr-auto">{errorMessage}</p>}
-              <Button variant="outline" onClick={() => setValue("q3Answer", null)} disabled={isSubmitting}>
-                選択をクリア
-              </Button>
-              <Button onClick={submitCoreResponse} disabled={isSubmitting}>
+              <Button onClick={submitCoreResponse} disabled={isSubmitting || !q3Answer}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                回答を完了する
+                次へ
               </Button>
             </footer>
           </>
@@ -436,10 +462,15 @@ export default function SurveyPage() {
         {step === "demographics" && (
           <main className="flex flex-1 flex-col justify-center gap-8">
             <section>
-              <h1 className="text-2xl font-bold md:text-3xl">回答ありがとうございました。</h1>
+              <p className="mb-2 text-sm font-medium text-muted-foreground">任意項目</p>
+              <h1 className="text-2xl font-bold md:text-3xl">最後に、差し支えなければ属性項目にご協力ください。</h1>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
-                ここまででアンケートは完了です。差し支えなければ、結果の解釈の参考にするため、任意項目にもご回答ください。
+                性別・年齢は結果の解釈の参考にのみ使用します。空欄のまま送信できます。
               </p>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <OptionalStatus label="性別" completed={Boolean(gender)} />
+                <OptionalStatus label="年齢" completed={Boolean(ageGroup?.trim())} />
+              </div>
             </section>
 
             <section className="space-y-4">
@@ -485,12 +516,9 @@ export default function SurveyPage() {
 
             <footer className="flex flex-col items-stretch gap-3 sm:flex-row sm:justify-end">
               {errorMessage && <p className="text-sm text-destructive sm:mr-auto">{errorMessage}</p>}
-              <Button variant="outline" onClick={() => setStep("complete")} disabled={isSubmitting}>
-                回答せず終了
-              </Button>
               <Button onClick={submitDemographics} disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                完了
+                送信する
               </Button>
             </footer>
           </main>
@@ -499,8 +527,8 @@ export default function SurveyPage() {
         {step === "complete" && (
           <main className="flex flex-1 flex-col items-center justify-center text-center">
             <Check className="mb-4 h-10 w-10 text-primary" aria-hidden="true" />
-            <h1 className="text-2xl font-bold md:text-3xl">ご回答ありがとうございました</h1>
-            <p className="mt-3 text-sm text-muted-foreground">回答が記録されました。</p>
+            <h1 className="text-2xl font-bold md:text-3xl">ご協力ありがとうございました！</h1>
+            <p className="mt-3 text-sm text-muted-foreground">送信が完了しました。</p>
             <Button onClick={resetAttempt} className="mt-8">
               もう一度回答する
             </Button>
