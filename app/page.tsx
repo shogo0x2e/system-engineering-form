@@ -475,68 +475,72 @@ export default function SurveyPage() {
                 <p className="mt-2 text-xs leading-6 text-muted-foreground">入力しない場合は、このままページを閉じてください。</p>
               </div>
 
-              {demographicsSubmitted && (
-                <p className="mb-4 rounded-md border border-primary/20 bg-primary/10 px-3 py-2 text-sm font-medium text-primary">
-                  任意項目を送信しました。
-                </p>
-              )}
-
-              <div className="space-y-5">
-                <section className="space-y-2">
-                  <h3 className="text-sm font-semibold text-muted-foreground">性別</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {GENDER_OPTIONS.map((option) => (
-                      <DemographicChoiceButton
-                        key={option.id}
-                        id={option.id}
-                        label={option.id === "other" ? "その他" : option.label}
-                        selected={gender === option.id}
-                        onClick={() => setValue("gender", option.id)}
-                      />
-                    ))}
+              {demographicsSubmitted ? (
+                <div className="flex items-center gap-3 rounded-md border border-primary/20 bg-background px-4 py-3 text-primary">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                    <Check className="h-4 w-4" aria-hidden="true" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold">任意項目を送信しました。</p>
+                    <p className="mt-1 text-xs text-muted-foreground">追加のご協力ありがとうございました。</p>
                   </div>
-                </section>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-5">
+                    <section className="space-y-2">
+                      <h3 className="text-sm font-semibold text-muted-foreground">性別</h3>
+                      <div className="grid grid-cols-2 gap-2">
+                        {GENDER_OPTIONS.map((option) => (
+                          <DemographicChoiceButton
+                            key={option.id}
+                            id={option.id}
+                            label={option.id === "other" ? "その他" : option.label}
+                            selected={gender === option.id}
+                            onClick={() => setValue("gender", option.id)}
+                          />
+                        ))}
+                      </div>
+                    </section>
 
-                <section className="space-y-2">
-                  <h3 className="text-sm font-semibold text-muted-foreground">年齢</h3>
-                  <label className="flex min-h-11 items-center gap-2 rounded-md border border-border bg-background px-3 text-card-foreground transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
-                    <Calendar className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      min={0}
-                      max={120}
-                      value={ageGroup ?? ""}
-                      onChange={(event) => {
-                        const digits = event.target.value.replace(/\D/g, "").slice(0, 3)
-                        const value = digits ? String(Math.min(Number(digits), 120)) : null
-                        setValue("ageGroup", value)
-                      }}
-                      placeholder="例: 20"
-                      aria-label="年齢"
-                      className="w-full bg-transparent text-sm font-medium outline-none placeholder:text-muted-foreground"
-                    />
-                    <span className="shrink-0 text-xs font-medium text-muted-foreground">歳</span>
-                  </label>
-                </section>
-              </div>
+                    <section className="space-y-2">
+                      <h3 className="text-sm font-semibold text-muted-foreground">年齢</h3>
+                      <label className="flex min-h-11 items-center gap-2 rounded-md border border-border bg-background px-3 text-card-foreground transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
+                        <Calendar className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min={0}
+                          max={120}
+                          value={ageGroup ?? ""}
+                          onChange={(event) => {
+                            const digits = event.target.value.replace(/\D/g, "").slice(0, 3)
+                            const value = digits ? String(Math.min(Number(digits), 120)) : null
+                            setValue("ageGroup", value)
+                          }}
+                          placeholder="例: 20"
+                          aria-label="年齢"
+                          className="w-full bg-transparent text-sm font-medium outline-none placeholder:text-muted-foreground"
+                        />
+                        <span className="shrink-0 text-xs font-medium text-muted-foreground">歳</span>
+                      </label>
+                    </section>
+                  </div>
 
-              <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
-                <Button
-                  onClick={submitDemographics}
-                  disabled={isSubmitting || demographicsSubmitted || !hasDemographicsInput}
-                  className="sm:ml-auto"
-                >
-                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  任意項目を送信する
-                </Button>
-              </div>
+                  <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
+                    <Button
+                      onClick={submitDemographics}
+                      disabled={isSubmitting || !hasDemographicsInput}
+                      className="sm:ml-auto"
+                    >
+                      {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      任意項目を送信する
+                    </Button>
+                  </div>
+                </>
+              )}
             </section>
-
-            <Button onClick={resetAttempt} variant="ghost" className="mt-6">
-              もう一度回答する
-            </Button>
           </main>
         )}
       </div>
