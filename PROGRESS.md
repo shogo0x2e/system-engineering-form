@@ -17,3 +17,23 @@ notebook は軽量で再実行しやすい一方、高度な統計検定や洗�
 
 ### Notes
 現時点の CSV は全 24 件、有効回答 23 件、失敗 1 件。予備集計では SNS が最多、AI チャット・AI 検索が次点グループに入り、SNS と AI の合算が有効回答の過半を占める。
+
+## [2026-05-07] Cloudflare D1 ローカル永続化基盤の追加
+
+### Context
+アンケートフォームは現在フロントエンドの `localStorage` とブラウザ内 CSV ダウンロードで動いている。今後 Cloudflare D1 に載せる前提で、まずは本番 D1 を作らずにローカル D1 で migration と Workers/OpenNext の土台を確認できる状態にする。
+
+### Decision
+PR1 では Cloudflare/OpenNext の最小基盤だけを追加する。`wrangler.jsonc` に D1 binding `DB` を定義し、`migrations/0001_create_survey_responses.sql` に YAGNI 方針の単一テーブル `survey_responses` を置く。回答整合性は DB の制約ではなく、後続 PR の zod/API 層で管理する。
+
+### Alternatives
+ローカル Docker で Postgres や `better-sqlite3` を使う案も検討したが、最終的な D1 移行時に接続 API が変わる。Wrangler local D1 を使えば D1 migration と binding の形を先に固められるため、今回は採用しない。append-only event log や option table は分析自由度が高い一方、今回の MVP には重いため採用しない。
+
+### Consequences
+本番 D1 作成前でも local migration と OpenNext preview の確認ができる。スキーマは `q1_answer` / `q2_answer` / `q3_answer` を中心とする latest-state 保存なので、初回回答・変更履歴・canonical 判定は保存しない。必要になった場合は後続 migration で拡張する。
+
+### Checks
+`wrangler d1 migrations apply system-engineering-form --local` でローカル D1 に migration を適用する。`wrangler d1 execute system-engineering-form --local --command "SELECT name FROM sqlite_master WHERE type = 'table';"` で `survey_responses` の作成を確認する。既存画面への影響は `pnpm build` で確認する。
+
+### Notes
+D1 の本番 database_id は未作成のため、`wrangler.jsonc` では placeholder を置き、local 開発用に `preview_database_id` を設定する。本番 D1 作成後に `database_id` を差し替える。
