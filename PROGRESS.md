@@ -77,3 +77,23 @@ Q3 の option id は当初の handoff に合わせ、`never` / `tried_few_times`
 
 ### Notes
 Q3 は option を選ばずに完了でき、その場合 `q3_answer` は `NULL` になる。`no_answer` を明示的に選んだ場合は `q3_answer = 'no_answer'` として保存する。
+
+## [2026-05-07] PR3 レビュー対応とアイコン生成方針
+
+### Context
+PR3 の画面実装に対して、フォーム値の `useState` が多く、`react-hook-form` を使う方がよいのではないかというレビュー観点が出た。また、Q1/Q2/Q3 の選択肢アイコンは参考画像のトリミングではなく新規生成する方針になった。
+
+### Decision
+PR3 内では見た目を大きく変えず、Q1/Q2/Q3/任意属性の回答値だけを `react-hook-form` に移す。画面 step、送信状態、エラー、free text modal の開閉はフォーム値ではなく UI 状態として `useState` に残す。アイコンはまず生成シートでトーンを確認し、実投入は後続 PR で個別ファイル化して行う。
+
+### Alternatives
+すべての状態を `react-hook-form` に寄せる案もあるが、step 遷移や modal 開閉までフォームに入れると責務が混ざるため採用しない。参考画像からアイコンをトリミングする案は、解像度・背景混入・ライセンス不明・トーン統一の面でリスクがあるため採用しない。
+
+### Consequences
+回答値の更新・取得・reset が一箇所にまとまり、後続の visual pass で入力部品を差し替えやすくなる。生成アイコンは現時点では repo に取り込まず、PR4/PR5 でレイアウト調整と個別アイコン投入を分ける余地を残す。
+
+### Checks
+`tsc --noEmit` と `next build` で `react-hook-form` 化後も型・ビルドが通ることを確認する。生成したアイコンシートは目視で、必要な選択肢の絵柄が揃っているか確認する。
+
+### Notes
+生成アイコンシートは `/Users/shogo/.codex/generated_images/019de27c-f43c-7271-afe0-997b5e7ccf18/ig_0281c60b81d01e0d0169fc1a1a37d4819187beb41eae5b04c7.png` に保存されている。

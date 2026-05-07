@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import { useForm } from "react-hook-form"
 import { Button } from "@/components/ui/button"
 import {
   AGE_GROUP_OPTIONS,
@@ -46,6 +47,26 @@ type SurveyResponsePayload = {
     id: string
   }
   error?: string
+}
+
+type SurveyFormValues = {
+  q1Answer: Q1Answer | null
+  q1OtherText: string | null
+  q2Answer: Q2Answer | null
+  q2OtherText: string | null
+  q3Answer: Q3Answer | null
+  gender: GenderAnswer | null
+  ageGroup: AgeGroupAnswer | null
+}
+
+const defaultFormValues: SurveyFormValues = {
+  q1Answer: null,
+  q1OtherText: null,
+  q2Answer: null,
+  q2OtherText: null,
+  q3Answer: null,
+  gender: null,
+  ageGroup: null,
 }
 
 const q1Tail = ["other", "none", "no_answer"] satisfies Q1Answer[]
@@ -143,18 +164,20 @@ function OptionButton({
 export default function SurveyPage() {
   const [attemptKey, setAttemptKey] = useState(0)
   const [step, setStep] = useState<Step>("start")
-  const [q1Answer, setQ1Answer] = useState<Q1Answer | null>(null)
-  const [q1OtherText, setQ1OtherText] = useState<string | null>(null)
-  const [q2Answer, setQ2Answer] = useState<Q2Answer | null>(null)
-  const [q2OtherText, setQ2OtherText] = useState<string | null>(null)
-  const [q3Answer, setQ3Answer] = useState<Q3Answer | null>(null)
-  const [gender, setGender] = useState<GenderAnswer | null>(null)
-  const [ageGroup, setAgeGroup] = useState<AgeGroupAnswer | null>(null)
   const [responseId, setResponseId] = useState<string | null>(null)
   const [freeText, setFreeText] = useState("")
   const [freeTextTarget, setFreeTextTarget] = useState<"q1" | "q2" | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const { getValues, reset, setValue, watch } = useForm<SurveyFormValues>({
+    defaultValues: defaultFormValues,
+  })
+
+  const q1Answer = watch("q1Answer")
+  const q2Answer = watch("q2Answer")
+  const q3Answer = watch("q3Answer")
+  const gender = watch("gender")
+  const ageGroup = watch("ageGroup")
 
   const { q1Options, q2Options, q1DisplayOrder, q2DisplayOrder } = useMemo(
     () => createDisplayOrders(),
@@ -164,13 +187,7 @@ export default function SurveyPage() {
   const resetAttempt = () => {
     setAttemptKey((value) => value + 1)
     setStep("q1")
-    setQ1Answer(null)
-    setQ1OtherText(null)
-    setQ2Answer(null)
-    setQ2OtherText(null)
-    setQ3Answer(null)
-    setGender(null)
-    setAgeGroup(null)
+    reset(defaultFormValues)
     setResponseId(null)
     setFreeText("")
     setFreeTextTarget(null)
@@ -179,8 +196,8 @@ export default function SurveyPage() {
 
   const handleQ1Select = (answer: Q1Answer) => {
     setErrorMessage(null)
-    setQ2Answer(null)
-    setQ2OtherText(null)
+    setValue("q2Answer", null)
+    setValue("q2OtherText", null)
 
     if (answer === "other") {
       setFreeText("")
@@ -188,8 +205,8 @@ export default function SurveyPage() {
       return
     }
 
-    setQ1Answer(answer)
-    setQ1OtherText(null)
+    setValue("q1Answer", answer)
+    setValue("q1OtherText", null)
     setStep(isTerminalQ1(answer) ? "q3" : "q2")
   }
 
@@ -202,8 +219,8 @@ export default function SurveyPage() {
       return
     }
 
-    setQ2Answer(answer)
-    setQ2OtherText(null)
+    setValue("q2Answer", answer)
+    setValue("q2OtherText", null)
     setStep("q3")
   }
 
@@ -212,14 +229,14 @@ export default function SurveyPage() {
     if (!text || !freeTextTarget) return
 
     if (freeTextTarget === "q1") {
-      setQ1Answer("other")
-      setQ1OtherText(text)
-      setQ2Answer(null)
-      setQ2OtherText(null)
+      setValue("q1Answer", "other")
+      setValue("q1OtherText", text)
+      setValue("q2Answer", null)
+      setValue("q2OtherText", null)
       setStep("q2")
     } else {
-      setQ2Answer("other")
-      setQ2OtherText(text)
+      setValue("q2Answer", "other")
+      setValue("q2OtherText", text)
       setStep("q3")
     }
 
@@ -228,7 +245,8 @@ export default function SurveyPage() {
   }
 
   const submitCoreResponse = async () => {
-    if (!q1Answer) return
+    const values = getValues()
+    if (!values.q1Answer) return
 
     setIsSubmitting(true)
     setErrorMessage(null)
@@ -238,11 +256,11 @@ export default function SurveyPage() {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          q1Answer,
-          q1OtherText,
-          q2Answer: isTerminalQ1(q1Answer) ? null : q2Answer,
-          q2OtherText: isTerminalQ1(q1Answer) ? null : q2OtherText,
-          q3Answer,
+          q1Answer: values.q1Answer,
+          q1OtherText: values.q1OtherText,
+          q2Answer: isTerminalQ1(values.q1Answer) ? null : values.q2Answer,
+          q2OtherText: isTerminalQ1(values.q1Answer) ? null : values.q2OtherText,
+          q3Answer: values.q3Answer,
           q1DisplayOrder,
           q2DisplayOrder,
         }),
@@ -263,12 +281,14 @@ export default function SurveyPage() {
   }
 
   const submitDemographics = async () => {
+    const values = getValues()
+
     if (!responseId) {
       setStep("complete")
       return
     }
 
-    if (!gender && !ageGroup) {
+    if (!values.gender && !values.ageGroup) {
       setStep("complete")
       return
     }
@@ -280,7 +300,7 @@ export default function SurveyPage() {
       const res = await fetch(`/api/survey/responses/${responseId}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ gender, ageGroup }),
+        body: JSON.stringify({ gender: values.gender, ageGroup: values.ageGroup }),
       })
 
       if (!res.ok) {
@@ -400,13 +420,13 @@ export default function SurveyPage() {
                   id={option.id}
                   label={option.label}
                   selected={q3Answer === option.id}
-                  onClick={() => setQ3Answer(option.id)}
+                  onClick={() => setValue("q3Answer", option.id)}
                 />
               ))}
             </main>
             <footer className="mt-8 flex flex-col items-stretch gap-3 sm:flex-row sm:justify-end">
               {errorMessage && <p className="text-sm text-destructive sm:mr-auto">{errorMessage}</p>}
-              <Button variant="outline" onClick={() => setQ3Answer(null)} disabled={isSubmitting}>
+              <Button variant="outline" onClick={() => setValue("q3Answer", null)} disabled={isSubmitting}>
                 選択をクリア
               </Button>
               <Button onClick={submitCoreResponse} disabled={isSubmitting}>
@@ -435,7 +455,7 @@ export default function SurveyPage() {
                     id={option.id}
                     label={option.label}
                     selected={gender === option.id}
-                    onClick={() => setGender(option.id)}
+                    onClick={() => setValue("gender", option.id)}
                   />
                 ))}
               </div>
@@ -450,7 +470,7 @@ export default function SurveyPage() {
                     id={option.id}
                     label={option.label}
                     selected={ageGroup === option.id}
-                    onClick={() => setAgeGroup(option.id)}
+                    onClick={() => setValue("ageGroup", option.id)}
                   />
                 ))}
               </div>
