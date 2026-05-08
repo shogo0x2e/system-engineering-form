@@ -277,3 +277,23 @@ Pages で Next.js を deploy する案もあるが、今回の app は Route Han
 
 ### Notes
 Wrangler 4.88.0 の deploy 出力では D1 binding の resource 表示が `system-engineering-form-local` と出るが、本番 API の POST 後に remote D1 `abc4a01a-5928-4b54-88ce-2d84cdd31e49` の row count が増えることを確認済み。
+
+## [2026-05-08] Workers custom domain 設定
+
+### Context
+本番 Worker は `https://system-engineering-form.shogo-kitada.workers.dev` で配布可能になったが、ユーザー所有ドメイン `x2e.me` のサブドメイン `sys-eng.x2e.me` を本番 URL として使いたい。
+
+### Decision
+Cloudflare Workers の Custom Domain として `sys-eng.x2e.me` を設定する。`wrangler.jsonc` に `routes: [{ pattern: "sys-eng.x2e.me", custom_domain: true }]` を追加し、OpenNext deploy で Worker に domain を紐づける。Worker が application origin なので、通常の route pattern `sys-eng.x2e.me/*` ではなく exact hostname の Custom Domain を使う。
+
+### Alternatives
+DNS に CNAME を手動で追加する案もあるが、Workers Custom Domain は Cloudflare が DNS record と certificate を管理できるため採用しない。Workers route を使う案は、既存 origin の前段で Worker を動かす用途に近く、今回は Worker 自体を origin にしたいので採用しない。
+
+### Consequences
+`sys-eng.x2e.me` でアンケートを配布できる。Custom Domain の証明書発行や DNS 反映には短時間の待ちが発生する可能性がある。Wrangler は `workers_dev` 未指定の場合、custom domain deploy 後に `workers.dev` route を無効化するため、旧 `system-engineering-form.shogo-kitada.workers.dev` は 404 になる。
+
+### Checks
+deploy 後に `https://sys-eng.x2e.me` が 200 を返すこと、`POST /api/survey/responses` が D1 に保存されること、CSV export が token なし 401 になることを確認した。smoke test の回答は remote D1 から削除し、row count が 0 に戻ったことを確認した。
+
+### Notes
+Cloudflare docs では Custom Domain の設定に active Cloudflare zone と Worker が必要で、hostname に既存 CNAME がある場合は作成できない。`dig` は sandbox 権限で実行できなかったが、HTTPS 200 と API smoke test で domain 設定の有効性を確認した。

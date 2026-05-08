@@ -17,6 +17,12 @@
       "service": "system-engineering-form"
     }
   ],
+  "routes": [
+    {
+      "pattern": "sys-eng.x2e.me",
+      "custom_domain": true
+    }
+  ],
   "d1_databases": [
     {
       "binding": "DB",
