@@ -2,12 +2,13 @@ import { getAppEnv } from "@/lib/server/db"
 import { exportSurveyResponsesCsv } from "@/lib/server/survey-service"
 
 function canExport(request: Request, expectedToken: string | undefined) {
-  if (!expectedToken) return true
-
+  const url = new URL(request.url)
+  if (!expectedToken) {
+    return ["localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1]"].includes(url.hostname)
+  }
   const auth = request.headers.get("authorization")
   if (auth === `Bearer ${expectedToken}`) return true
 
-  const url = new URL(request.url)
   return url.searchParams.get("token") === expectedToken
 }
 
@@ -30,4 +31,3 @@ export async function GET(request: Request) {
     return new Response("Internal Server Error", { status: 500 })
   }
 }
-

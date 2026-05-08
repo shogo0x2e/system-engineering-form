@@ -237,3 +237,43 @@ Q1 の画面が少し短くなり、Q3 では `回答しない` が familiarity 
 
 ### Notes
 アイコンは引き続き lucide の仮アイコンで、後続 PR で生成アイコンを個別投入する。
+
+## [2026-05-08] Cloudflare production deploy 準備
+
+### Context
+PR4 まで main に merge され、ローカル D1 + OpenNext/Workers で動作する状態になった。次は本番配布に向けて Cloudflare 上の D1 と Workers deploy を行う。
+
+### Decision
+本番は Cloudflare Workers 上の OpenNext adapter と Cloudflare D1 binding `DB` で構成する。D1 database `system-engineering-form` を APAC location hint で作成し、`wrangler.jsonc` の `database_id` を本番 D1 UUID に差し替える。remote migration 用に `d1:migrate:remote` script を追加する。CSV export は production で `EXPORT_TOKEN` 未設定のまま公開されないよう、token 未設定時は localhost からのアクセスだけ許可する。
+
+### Alternatives
+Pages で Next.js を deploy する案もあるが、今回の app は Route Handler と D1 binding を使うため、Cloudflare の Next.js Workers guide に沿って OpenNext on Workers を採用する。D1 の location hint を指定しない案もあるが、回答者が日本の学生中心であるため APAC を指定する。
+
+### Consequences
+本番 deploy 前に remote D1 migration を適用できる。CSV export endpoint は `EXPORT_TOKEN` secret を設定しない限り production では 401 になるため、誤公開を避けられる。一方、CSV を本番で取得するには secret 設定と token 共有が必要になる。
+
+### Checks
+`wrangler whoami` でログインを確認する。`wrangler d1 list` / `wrangler d1 create system-engineering-form --location=apac` で本番 D1 を作成する。`wrangler d1 migrations apply system-engineering-form --remote` で schema を適用し、`opennextjs-cloudflare build` と deploy 後の smoke test を行う。
+
+### Notes
+作成した本番 D1 database id は `abc4a01a-5928-4b54-88ce-2d84cdd31e49`。Cloudflare docs では D1 migration は database name または binding name で実行できるが、database name の方が binding rename の影響を受けにくい。
+
+## [2026-05-08] Cloudflare production deploy 実施
+
+### Context
+本番 D1 作成と schema migration が完了したため、OpenNext bundle を Cloudflare Workers に deploy し、本番 URL と API/D1 の疎通を確認する。
+
+### Decision
+`npx pnpm@10.33.4 run deploy` で OpenNext build と deploy をまとめて実行する。CSV export は `EXPORT_TOKEN` を Cloudflare Worker secret として設定し、token なしでは 401、Bearer token 付きでは 200 になることを確認する。本番 smoke test で 1 件 POST した回答は確認後に remote D1 から削除し、本番 DB は空に戻す。
+
+### Alternatives
+`opennextjs-cloudflare deploy` のみを直接実行する案もあるが、既存 `.open-next` bundle を deploy してしまい最新コードが反映されない可能性があるため、deploy 時は必ず `build && deploy` を使う。
+
+### Consequences
+本番 URL `https://system-engineering-form.shogo-kitada.workers.dev` でフォームを配布できる状態になった。D1 は remote APAC/NRT で `survey_responses` を持ち、回答 POST が D1 に保存される。CSV export は secret token がない限り外部公開されない。
+
+### Checks
+本番 `/` が 200 を返すこと、`POST /api/survey/responses` が 201 相当の response JSON を返すこと、remote D1 の `survey_responses` row count が増えること、smoke test row 削除後に row count が 0 に戻ること、CSV export が token なし 401 / token あり 200 になることを確認した。
+
+### Notes
+Wrangler 4.88.0 の deploy 出力では D1 binding の resource 表示が `system-engineering-form-local` と出るが、本番 API の POST 後に remote D1 `abc4a01a-5928-4b54-88ce-2d84cdd31e49` の row count が増えることを確認済み。
